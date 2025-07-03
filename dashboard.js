@@ -77,6 +77,28 @@ async function loadDetailedMonthlyView(year, month, filterUserId = '') {
     .gte('attendance_date', startOfMonth)
     .lte('attendance_date', endOfMonth)
     .order('attendance_date', { ascending: true });
+	
+
+const { data: dlogs, error: dlogsError } = await query;
+
+if (dlogsError) {
+  console.error('Detailed view error:', dlogsError);
+  return;
+}
+
+console.log('=== Raw Logs ===');
+console.table(dlogs);
+
+dlogs.forEach((row, index) => {
+  console.log(`Row ${index + 1}:`);
+  console.log('user_id:', row.user_id);
+  console.log('attendance_date:', row.attendance_date);
+  console.log('timestamp:', row.timestamp);
+  console.log('status:', row.status);
+  console.log('photo_url:', row.photo_url);
+  console.log('profiles:', row.profiles);
+});
+
 
   if (filterUserId) {
     query = query.eq('user_id', filterUserId);
@@ -90,20 +112,20 @@ async function loadDetailedMonthlyView(year, month, filterUserId = '') {
   }
 
   const selfiesMap = {};
-  await Promise.all(logs.map(async (row) => {
-    if (row.photo_url) {
-      const { data: signed } = await supabaseClient
-        .storage
-        .from('attendance-selfies')
-        .createSignedUrl(row.photo_url, 60 * 60);
-      if (signed?.signedUrl) {
-        const name = row.profiles?.full_name || 'Unknown';
-        const email = row.profiles?.email || '';
-        const key = `${email}|${name}`;
-        selfiesMap[`${row.attendance_date}|${key}`] = signed.signedUrl;
-      }
+await Promise.all(logs.map(async (row) => {
+  if (row.photo_url) {
+    const { data: signed, error } = await supabaseClient
+      .storage
+      .from('attendance-selfies')
+      .createSignedUrl(row.photo_url, 60 * 60);
+
+    if (signed?.signedUrl) {
+      selfiesMap[`${row.attendance_date}|${row.user_id}`] = signed.signedUrl;
+    } else {
+      console.error(`❌ Failed to get signed URL for ${row.photo_url}`, error);
     }
-  }));
+  }
+}));
 
   renderDetailedTable(logs, startOfMonth, endOfMonth, filterUserId, selfiesMap);
 }
@@ -147,7 +169,9 @@ function renderDetailedTable(logs, startDateStr, endDateStr, selectedEmployeeId 
       hour12: true
     });
 
-    const selfie = selfiesMap[`${date}|${profile.email}|${profile.name}`] || null;
+    const selfie = selfiesMap[`${date}|${userId}`] || null;
+	console.log('SelfiesMap keys:', Object.keys(selfiesMap));
+
 
     if (!logsMap[date]) logsMap[date] = {};
     logsMap[date][key] = {
@@ -264,9 +288,4 @@ async function loadDashboard() {
   loadLogs(today); // ← Assuming you still have this defined elsewhere
 }
 
-dateFilter.addEventListener('change', (e) => {
-  const selectedDate = e.target.value;
-  if (selectedDate) loadLogs(selectedDate);
-});
 
-loadDashboard();

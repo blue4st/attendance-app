@@ -8,9 +8,11 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const OFFICE_LAT = 28.71278826284781;
-const OFFICE_LNG = 77.11959041050629;
-const MAX_DISTANCE_METERS = 20000;
+import { CONFIG } from './config.js';
+
+const OFFICE_LAT = CONFIG.OFFICE_LAT;
+const OFFICE_LNG = CONFIG.OFFICE_LNG;
+const MAX_DISTANCE_METERS = CONFIG.MAX_DISTANCE_METERS;
 
 document.getElementById('login-button').addEventListener('click', login);
 document.getElementById('logout-button').addEventListener('click', logout);

@@ -4,45 +4,70 @@ const tableBody = document.querySelector('#attendance-table tbody');
 const dateFilter = document.getElementById('date-filter');
 const logoutButton = document.getElementById('logout-button');
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const now = new Date();
-  const defaultMonth = now.toISOString().slice(0, 7); // YYYY-MM
+  const defaultMonth = now.toISOString().slice(0, 7);
   const monthPicker = document.getElementById('month-picker');
+  const employeeFilter = document.getElementById('employee-filter');
+
   monthPicker.value = defaultMonth;
 
-  // Auto-load when month is changed
+  await loadAndPopulateFilter();
+
   monthPicker.addEventListener('change', () => {
-    const selected = monthPicker.value;
-    if (selected) {
-      const [year, month] = selected.split('-');
-      loadDetailedMonthlyView(parseInt(year), parseInt(month));
-    }
+    const [year, month] = monthPicker.value.split('-');
+    loadDetailedMonthlyView(parseInt(year), parseInt(month), employeeFilter.value);
   });
 
-  // Initial load for current month
-  loadDetailedMonthlyView(now.getFullYear(), now.getMonth() + 1);
+  employeeFilter.addEventListener('change', () => {
+    const [year, month] = monthPicker.value.split('-');
+    loadDetailedMonthlyView(parseInt(year), parseInt(month), employeeFilter.value);
+  });
+
+  loadDetailedMonthlyView(now.getFullYear(), now.getMonth() + 1, '');
 });
 
+async function loadAndPopulateFilter() {
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id, full_name')
+    .order('full_name');
 
+  if (error) {
+    console.error('Error loading employees:', error);
+    return;
+  }
+
+  const employeeFilter = document.getElementById('employee-filter');
+  employeeFilter.innerHTML = `<option value="">All Employees</option>`;
+  
+  data.forEach(profile => {
+    const option = document.createElement('option');
+    option.value = profile.id;
+    option.textContent = profile.full_name;
+    employeeFilter.appendChild(option);
+  });
+}
 
 logoutButton.addEventListener('click', async () => {
   await supabaseClient.auth.signOut();
   window.location.href = '/index.html';
 });
 
-async function loadDetailedMonthlyView(year, month) {
+async function loadDetailedMonthlyView(year, month, filterUserId = '') {
   const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0); // Last day of the month
+  const endDate = new Date(year, month, 0);
 
-  const startOfMonth = startDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  const startOfMonth = startDate.toLocaleDateString('en-CA');
   const endOfMonth = endDate.toLocaleDateString('en-CA');
 
-  const { data: logs, error: logsError } = await supabaseClient
+  let query = supabaseClient
     .from('attendance_logs')
     .select(`
       attendance_date,
       timestamp,
       status,
+      photo_url,
       user_id,
       profiles:user_id (
         full_name,
@@ -53,38 +78,68 @@ async function loadDetailedMonthlyView(year, month) {
     .lte('attendance_date', endOfMonth)
     .order('attendance_date', { ascending: true });
 
+  if (filterUserId) {
+    query = query.eq('user_id', filterUserId);
+  }
+
+  const { data: logs, error: logsError } = await query;
+
   if (logsError) {
     console.error('Detailed view error:', logsError);
     return;
   }
 
-  renderDetailedTable(logs, startOfMonth, endOfMonth);
+  const selfiesMap = {};
+  await Promise.all(logs.map(async (row) => {
+    if (row.photo_url) {
+      const { data: signed } = await supabaseClient
+        .storage
+        .from('attendance-selfies')
+        .createSignedUrl(row.photo_url, 60 * 60);
+      if (signed?.signedUrl) {
+        const name = row.profiles?.full_name || 'Unknown';
+        const email = row.profiles?.email || '';
+        const key = `${email}|${name}`;
+        selfiesMap[`${row.attendance_date}|${key}`] = signed.signedUrl;
+      }
+    }
+  }));
+
+  renderDetailedTable(logs, startOfMonth, endOfMonth, filterUserId, selfiesMap);
 }
 
-
-
-function renderDetailedTable(logs, startDateStr, endDateStr) {
+function renderDetailedTable(logs, startDateStr, endDateStr, selectedEmployeeId = '', selfiesMap = {}) {
   const table = document.getElementById('detailed-table');
   const thead = table.querySelector('thead');
   const tbody = table.querySelector('tbody');
 
-  // Prepare unique user map: key = email|name
-  const users = [...new Map(
-    logs.map(row => {
-      const name = row.profiles?.full_name || 'Unknown';
-      const email = row.profiles?.email || '';
-      const key = `${email}|${name}`;
-      return [key, { name, email }];
-    })
-  )].sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const usersMap = new Map();
+  logs.forEach(row => {
+    if (row.profiles) {
+      usersMap.set(row.user_id, {
+        name: row.profiles.full_name || 'Unknown',
+        email: row.profiles.email || '',
+      });
+    }
+  });
 
-  // Group logs by date and user key
+  const users = Array.from(usersMap.entries()).sort((a, b) =>
+    a[1].name.localeCompare(b[1].name)
+  );
+
+  const filteredUsers = selectedEmployeeId
+    ? users.filter(([id]) => id === selectedEmployeeId)
+    : users;
+
   const logsMap = {};
   logs.forEach(row => {
     const date = row.attendance_date;
-    const name = row.profiles?.full_name || 'Unknown';
-    const email = row.profiles?.email || '';
-    const key = `${email}|${name}`;
+    const userId = row.user_id;
+    const profile = usersMap.get(userId);
+
+    if (!profile) return;
+
+    const key = userId;
 
     const time = new Date(row.timestamp).toLocaleTimeString('en-IN', {
       hour: '2-digit',
@@ -92,14 +147,16 @@ function renderDetailedTable(logs, startDateStr, endDateStr) {
       hour12: true
     });
 
+    const selfie = selfiesMap[`${date}|${profile.email}|${profile.name}`] || null;
+
     if (!logsMap[date]) logsMap[date] = {};
     logsMap[date][key] = {
       status: row.status,
-      time
+      time,
+      selfie
     };
   });
 
-  // Generate list of dates
   const start = new Date(startDateStr);
   const end = new Date(endDateStr);
   const dates = [];
@@ -107,12 +164,10 @@ function renderDetailedTable(logs, startDateStr, endDateStr) {
     dates.push(new Date(d));
   }
 
-  // Render table header
   thead.innerHTML = '<tr><th>Date</th>' +
-    users.map(([_, user]) => `<th>${user.name}<br><small>${user.email}</small></th>`).join('') +
+    filteredUsers.map(([_, user]) => `<th>${user.name}<br><small>${user.email}</small></th>`).join('') +
     '</tr>';
 
-  // Render table rows
   tbody.innerHTML = '';
 
   for (const date of dates) {
@@ -125,16 +180,39 @@ function renderDetailedTable(logs, startDateStr, endDateStr) {
 
     row.innerHTML = `<td>${dateLabel}</td>`;
 
-    for (const [key, user] of users) {
-      const entry = logsMap[iso]?.[key];
+    for (const [userId, user] of filteredUsers) {
+      const entry = logsMap[iso]?.[userId];
       let cell = '';
 
-      if (entry) {
-        if (entry.status === 'present') {
-          cell = `🟢 Present<br><small>${entry.time}</small>`;
-        } else if (entry.status === 'late') {
-          cell = `🔴 Late<br><small>${entry.time}</small>`;
+      if (entry && entry.time) {
+        const [hourStr, minuteStr, meridian] = entry.time.match(/(\d+):(\d+)\s?(AM|PM)/i).slice(1);
+        let hours = parseInt(hourStr);
+        const minutes = parseInt(minuteStr);
+        const isPM = meridian.toUpperCase() === 'PM';
+        if (hours === 12) hours = 0;
+        const totalMinutes = (isPM ? 12 * 60 : 0) + hours * 60 + minutes;
+
+        let icon = '🟢';
+        let label = 'present';
+
+        if (totalMinutes >= 11 * 60 + 30) {
+          icon = '🔴';
+          label = 'late';
+        } else if (totalMinutes >= 11 * 60) {
+          icon = '🟡';
+          label = 'warning';
         }
+
+        cell = `
+          ${icon} ${label}<br>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px;">
+            <small>${entry.time}</small>
+            ${entry.selfie 
+              ? `<img src="${entry.selfie}" style="width: 64px; height: 64px; object-fit: cover; border-radius: 4px;" />`
+              : ''
+            }
+          </div>
+        `;
       }
 
       row.innerHTML += `<td style="text-align:center">${cell}</td>`;
@@ -142,13 +220,23 @@ function renderDetailedTable(logs, startDateStr, endDateStr) {
 
     tbody.appendChild(row);
   }
+
+  populateEmployeeDropdown(users);
 }
 
+function populateEmployeeDropdown(users) {
+  const dropdown = document.getElementById('employee-filter');
+  const current = dropdown.value;
 
+  dropdown.innerHTML = `<option value="">All Employees</option>` +
+    users.map(([key, user]) =>
+      `<option value="${key}" ${key === current ? 'selected' : ''}>${user.name}</option>`
+    ).join('');
+}
 
 async function loadDashboard() {
-await loadDetailedMonthlyView();	
-  // Step 1: Get authenticated user
+  await loadDetailedMonthlyView();
+
   const {
     data: { user },
     error: userError
@@ -160,7 +248,6 @@ await loadDetailedMonthlyView();
     return;
   }
 
-  // Step 2: Get profile to check if admin
   const { data: profile, error: profileError } = await supabaseClient
     .from('profiles')
     .select('role')
@@ -173,58 +260,9 @@ await loadDetailedMonthlyView();
     return;
   }
 
-  // Step 3: Load today's logs by default
   const today = new Date().toISOString().slice(0, 10);
-  dateFilter.value = today;
-  loadLogs(today);
+  loadLogs(today); // ← Assuming you still have this defined elsewhere
 }
-
-async function loadLogs(date) {
-  const { data: logs, error } = await supabaseClient
-    .from('attendance_logs')
-    .select(`
-      id,
-      user_id,
-      lat,
-      lng,
-      photo_url,
-      status,
-      attendance_date,
-      profiles (
-        full_name
-      )
-    `)
-    .eq('attendance_date', date)
-    .order('attendance_date', { ascending: false });
-
-  if (error) {
-    console.error('❌ Failed to load attendance logs:', error);
-    return;
-  }
-
-  renderLogs(logs);
-}
-
-
-function renderLogs(logs) {
-  tableBody.innerHTML = '';
-  logs.forEach(log => {
-  const tr = document.createElement('tr');
-
-  tr.innerHTML = `
-    <td>${log.attendance_date}</td>
-    <td>${log.profiles?.full_name || 'N/A'}</td>
-    <td class="${log.status === 'late' ? 'status-late' : 'status-present'}">
-  ${log.status === 'late' ? '🔴 Late' : '🟢 Present'}
-</td>
-    <td><a href="${log.photo_url}" target="_blank">View</a></td>
-  `;
-
-  tableBody.appendChild(tr);
-});
-}
-
-
 
 dateFilter.addEventListener('change', (e) => {
   const selectedDate = e.target.value;

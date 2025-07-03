@@ -21,15 +21,22 @@
   </style>
 </head>
 <body>
-  <h1>Admin Attendance Dashboard</h1>
+  <h1>BFP Attendance Dashboard</h1>
 
-  <div id="top-controls">
-    <label for="month-picker"><strong>Select Month:</strong></label>
-    <input type="month" id="month-picker" />
-    <button id="logout-button">Logout</button>
-  </div>
+<div id="top-controls">
+  <label for="month-picker"><strong>Select Month:</strong></label>
+  <input type="month" id="month-picker" />
 
-  <h2>Detailed Attendance</h2>
+  <label for="employee-filter" style="margin-left: 20px;"><strong>Filter by Employee:</strong></label>
+  <select id="employee-filter">
+    <option value="">All Employees</option>
+  </select>
+
+  <button id="logout-button" style="float: right;">Logout</button>
+</div>
+
+
+  <h2>Monthly Attendance</h2>
   <div style="overflow-x:auto;">
     <table id="detailed-table" border="1">
       <thead></thead>

@@ -106,5 +106,11 @@ input, button {
   text-decoration: underline;
 }
 
+#top-controls label, #top-controls select, #top-controls input, #top-controls button {
+  margin-right: 12px;
+  vertical-align: middle;
+}
+
+
 
 

@@ -230,10 +230,10 @@ const { data: existing, error: checkError } = await supabaseClient
     return;
   }
 
-  const { data: urlData } = supabaseClient
-    .storage
-    .from('attendance-selfies')
-    .getPublicUrl(filePath);
+const { data: urlData } = supabaseClient
+  .storage
+  .from('attendance-selfies')
+  .getPublicUrl(filePath);
 
   // Step 7: Insert attendance record
   
@@ -260,7 +260,7 @@ console.log('Local date:', localDate);
     user_id: user.id,
     lat: latitude,
     lng: longitude,
-    photo_url: urlData.publicUrl,
+    photo_url: filePath,
     status,
     attendance_date: localDate
   });

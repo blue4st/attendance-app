@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Attendance</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .status-late {
+      color: red;
+      font-weight: bold;
+    }
+    .status-present {
+      color: green;
+      font-weight: bold;
+    }
+    #detailed-table th, #detailed-table td {
+      padding: 4px 8px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Admin Attendance Dashboard</h1>
+
+  <div id="top-controls">
+    <label for="month-picker"><strong>Select Month:</strong></label>
+    <input type="month" id="month-picker" />
+    <button id="logout-button">Logout</button>
+  </div>
+
+  <h2>Detailed Attendance</h2>
+  <div style="overflow-x:auto;">
+    <table id="detailed-table" border="1">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script
+  async
+  src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"
+></script>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

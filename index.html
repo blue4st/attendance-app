@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Attendance App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<div id="snackbar"></div>
+<body>
+  <h2>Attendance Marking</h2>
+
+  <div id="login-section">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="login-button">Login</button>
+  </div>
+
+  <div id="app-section" style="display:none">
+    <div id="camera-wrapper">
+  <video id="video" autoplay muted playsinline></video>
+</div>
+<canvas id="canvas" class="hidden"></canvas>
+
+    <button id="mark-button" class="primary-button">Mark Attendance</button>
+    <a href="#" id="logout-button" class="logout-link">Logout</a>
+    <div id="status"></div>
+  </div>
+
+<script
+  async
+  src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"
+></script>
+
+  <script type="module" src="app.js"></script>
+  
+<div id="attendance-overlay" class="overlay hidden">
+  <div class="overlay-content" id="overlay-message"></div>
+</div>
+
+</body>
+</html>

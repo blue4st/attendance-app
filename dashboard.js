@@ -51,7 +51,7 @@ async function loadAndPopulateFilter() {
 
 logoutButton.addEventListener('click', async () => {
   await supabaseClient.auth.signOut();
-  window.location.href = '/index.html';
+  window.location.href = '/attendance-app/index.html';
 });
 
 async function loadDetailedMonthlyView(year, month, filterUserId = '') {
@@ -268,7 +268,7 @@ async function loadDashboard() {
 
   if (!user || userError) {
     alert('Access denied. Please log in.');
-    window.location.href = '/index.html';
+    window.location.href = '/attendance-app/index.html';
     return;
   }
 

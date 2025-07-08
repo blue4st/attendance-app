@@ -100,11 +100,16 @@ async function loadApp() {
   loginSection.style.display = 'none';
   appSection.style.display = 'block';
 
+
+
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => video.srcObject = stream)
     .catch(err => {
       statusDiv.innerText = 'Camera access denied';
     });
+
+
+
 }
 
 function showOverlay(message, refreshAfter = true, delay = 4000) {
@@ -144,18 +149,77 @@ function getDistanceFromOffice(lat, lng) {
 
 
 async function markAttendance() {
+// Check camera permission
+  try {
+    const cameraPerm = await navigator.permissions.query({ name: 'camera' });
+    if (cameraPerm.state === 'denied') {
+      showOverlay(`❌ Camera access is currently blocked.
+
+👉 To enable it:
+1. Click the 🔒 icon near the address bar.
+2. Find "Camera" and set it to "Allow".
+3. Reload the page.`);
+      return;
+    }
+  } catch (err) {
+    console.warn('Camera permissions query failed:', err);
+  }
+
+// Check location permission (optional pre-check)
+  try {
+    const geoPerm = await navigator.permissions.query({ name: 'geolocation' });
+    if (geoPerm.state === 'denied') {
+      showOverlay(`❌ Location access is currently blocked.
+
+👉 To enable it:
+1. Click the 🔒 icon near the address bar.
+2. Find "Location" and set it to "Allow".
+3. Reload the page.`);
+      return;
+    }
+  } catch (err) {
+    console.warn('Geolocation permission query not supported.');
+  }
+
+  // ✅ Step 1: Actually request location and wait
+  let pos;
+  try {
+    pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+    });
+  } catch (err) {
+    showOverlay(`❌ Failed to access location.
+
+👉 To fix:
+1. Ensure location is enabled on your device.
+2. Grant location permission to the browser.
+3. Reload the page.
+
+Error: ${err.message}`);
+    return;
+  }
+
+  
   statusDiv.innerText = 'Marking Attendance...';
 
+
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  showOverlay("❌ Camera not supported on this device.");
+  return;
+}
+
+
   // Step 1: Get location
-  const pos = await new Promise((resolve, reject) =>
-    navigator.geolocation.getCurrentPosition(resolve, reject)
-  );
+
   const { latitude, longitude } = pos.coords;
 
   // Step 2: Geofencing
   const distance = getDistanceFromOffice(latitude, longitude);
   const rounded = Math.round(distance);
-  if (distance > MAX_DISTANCE_METERS) {
+  if (distance < MAX_DISTANCE_METERS) {
     showOverlay(`❌ You're ${rounded} meters away from office. Move closer.`);
     return;
   }
@@ -213,12 +277,24 @@ const { data: existing, error: checkError } = await supabaseClient
     return;
   }
 
+if (video.videoWidth === 0 || video.videoHeight === 0) {
+  showOverlay("❌ Camera not ready. Please wait and try again.");
+  return;
+}
+
   // Step 5: Capture photo
   statusDiv.innerText = 'Capturing...';
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   ctx.drawImage(video, 0, 0);
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+
+if (!blob || blob.size === 0) {
+  showOverlay("❌ Failed to capture a valid photo. Try again.");
+  return;
+}
+
+
 
   // Step 6: Upload to storage
   const filePath = `${user.id}/${Date.now()}.jpg`;

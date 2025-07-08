@@ -219,7 +219,7 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
   // Step 2: Geofencing
   const distance = getDistanceFromOffice(latitude, longitude);
   const rounded = Math.round(distance);
-  if (distance < MAX_DISTANCE_METERS) {
+  if (distance > MAX_DISTANCE_METERS) {
     showOverlay(`❌ You're ${rounded} meters away from office. Move closer.`);
     return;
   }

@@ -149,6 +149,11 @@ function getDistanceFromOffice(lat, lng) {
 
 
 async function markAttendance() {
+const markButton = document.getElementById('mark-button');
+  markButton.disabled = true;
+  markButton.style.opacity = '0.2';
+  statusDiv.innerText = 'Marking Attendance...';
+
 // Check camera permission
   try {
     const cameraPerm = await navigator.permissions.query({ name: 'camera' });
@@ -201,9 +206,6 @@ async function markAttendance() {
 Error: ${err.message}`);
     return;
   }
-
-  
-  statusDiv.innerText = 'Marking Attendance...';
 
 
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {

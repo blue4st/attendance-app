@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
+<div id="logo-container" style="text-align: center; margin: 20px 0;">
+  <img src="https://qkhokdmtloufbbcajmst.supabase.co/storage/v1/object/public/misc-pub//logo%20-%20Horizontal.png" alt="Your Logo" id="site-logo" style="max-height: 80px;" />
+</div>
+
   <title>Attendance App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="styles.css">
 </head>
 <div id="snackbar"></div>
 <body>
-  <h2>Attendance Marking</h2>
 
   <div id="login-section">
     <input type="email" id="email" placeholder="Email" />
@@ -22,6 +25,7 @@
 <canvas id="canvas" class="hidden"></canvas>
 
     <button id="mark-button" class="primary-button">Mark Attendance</button>
+
     <a href="#" id="logout-button" class="logout-link">Logout</a>
     <div id="status"></div>
   </div>

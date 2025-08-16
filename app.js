@@ -235,7 +235,7 @@ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showOverlay('❌ Not logged in. Please login again.');
     return;
   }
-
+/*
 const currentDeviceId = await getDeviceId();
 
 const { data: profile } = await supabaseClient
@@ -256,6 +256,7 @@ if (!profile.device_id) {
     .update({ device_id: currentDeviceId })
     .eq('id', user.id);
 }
+*/
 
   // Step 4: Check duplicate attendance
   //const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD

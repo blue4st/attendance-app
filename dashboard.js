@@ -219,10 +219,10 @@ function renderDetailedTable(logs, startDateStr, endDateStr, selectedEmployeeId 
         let icon = '🟢';
         let label = 'present';
 
-        if (totalMinutes >= 11 * 60 + 30) {
+        if (totalMinutes >= 10 * 60 + 30) {
           icon = '🔴';
           label = 'late';
-        } else if (totalMinutes >= 11 * 60) {
+        } else if (totalMinutes >= 10 * 60) {
           icon = '🟡';
           label = 'warning';
         }
